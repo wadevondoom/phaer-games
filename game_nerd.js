@@ -1,6 +1,10 @@
 class MainScene extends Phaser.Scene {
     constructor() {
         super({ key: 'MainScene' });
+        this.score = 0;
+        this.baseSpeedMin = 100;
+        this.baseSpeedMax = 300;
+        this.speedRangeIncrease = 50;
     }
 
     preload() {
@@ -106,7 +110,10 @@ class MainScene extends Phaser.Scene {
         }
 
         // Player shooting
-        // Add your shooting logic here
+          // Player shooting
+        if (Phaser.Input.Keyboard.JustDown(this.cursors.space)) {
+            this.shootBullet();
+        }
 
         // Check for collisions
         this.physics.add.collider(this.bulletGroup, this.enemyGroup, this.killGlitchyEnemy, null, this);
@@ -134,6 +141,11 @@ class MainScene extends Phaser.Scene {
         score += 100;
         this.createGlitchyEnemy();
     }
-}
 
-  // ...
+    shootBullet() {
+        const bullet = this.physics.add.sprite(this.player.x, this.player.y, 'bullet');
+        bullet.setOrigin(0.5, 0.5);
+        this.physics.velocityFromAngle(this.player.rotation, 400, bullet.body.velocity);
+        this.bulletGroup.add(bullet);
+      }
+}
