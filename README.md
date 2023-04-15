@@ -1,2 +1,2 @@
-# phaer-games
+# phaser-games
 Workspace for phaser game development
