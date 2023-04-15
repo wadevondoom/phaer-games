@@ -148,36 +148,24 @@ class Glitchy extends Enemy {
 }
 
 
+
 function createGlitchyEnemy() {
     const offscreenPadding = 50;
     const spawnX = Math.random() < 0.5 ? -offscreenPadding : game.world.width + offscreenPadding;
     const spawnY = Math.floor(Math.random() * (game.world.height - 2 * offscreenPadding)) + offscreenPadding;
-
+  
     // Calculate speed range based on player score
     const speedMin = baseSpeedMin + Math.floor(score / 1000) * speedRangeIncrease;
     const speedMax = baseSpeedMax + Math.floor(score / 1000) * speedRangeIncrease;
     const speed = game.rnd.integerInRange(speedMin, speedMax);
-
+  
     // Create new Glitchy enemy with random speed
     const glitchyEnemy = new Glitchy(game, spawnX, spawnY, speed);
-
+  
     // Add the new Glitchy enemy to the enemy group
     enemyGroup.add(glitchyEnemy);
-}
+  }
 
-
-
-
-function moveGlitchyEnemy() {
-    if (!glitchyEnemy.moveTimer || glitchyEnemy.moveTimer <= 0) {
-        const speed = 150;
-        const angle = Math.random() * 360;
-        game.physics.arcade.velocityFromAngle(angle, speed, glitchyEnemy.body.velocity);
-        glitchyEnemy.moveTimer = game.time.now + 1500; // Change direction every 2 seconds
-    } else {
-        glitchyEnemy.moveTimer -= game.time.elapsed;
-    }
-}
 
 function killGlitchyEnemy(bullet, enemy) {
     bullet.kill();
