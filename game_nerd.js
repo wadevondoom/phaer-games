@@ -113,8 +113,42 @@ function create() {
     weapon.bullets.visible = false;
 }
 
-function createGlitchyEnemy() {
 
+class Enemy extends Phaser.Sprite {
+    constructor(game, x, y, spriteKey) {
+        super(game, x, y, spriteKey);
+        this.anchor.set(0.5);
+        this.game.physics.arcade.enable(this);
+        this.body.collideWorldBounds = true;
+        this.body.bounce.set(1);
+    }
+
+    update() {
+        // Implement generic enemy update logic here (if any)
+    }
+}
+
+class Glitchy extends Enemy {
+    constructor(game, x, y, speed) {
+        super(game, x, y, 'enemy3');
+        this.game.physics.arcade.velocityFromAngle(Math.random() * 360, speed, this.body.velocity);
+        this.moveTimer = 0;
+    }
+
+    update() {
+        if (this.moveTimer <= 0) {
+            const speed = 150;
+            const angle = Math.random() * 360;
+            this.game.physics.arcade.velocityFromAngle(angle, speed, this.body.velocity);
+            this.moveTimer = this.game.time.now + 1500; // Change direction every 1.5 seconds
+        } else {
+            this.moveTimer -= this.game.time.elapsed;
+        }
+    }
+}
+
+
+function createGlitchyEnemy() {
     const offscreenPadding = 50;
     const spawnX = Math.random() < 0.5 ? -offscreenPadding : game.world.width + offscreenPadding;
     const spawnY = Math.floor(Math.random() * (game.world.height - 2 * offscreenPadding)) + offscreenPadding;
@@ -124,17 +158,13 @@ function createGlitchyEnemy() {
     const speedMax = baseSpeedMax + Math.floor(score / 1000) * speedRangeIncrease;
     const speed = game.rnd.integerInRange(speedMin, speedMax);
 
-    // Create new glitchyEnemy with random speed
-    glitchyEnemy = game.add.sprite(spawnX, spawnY, 'enemy3');
-    glitchyEnemy.anchor.set(0.5);
-    game.physics.arcade.enable(glitchyEnemy);
-    glitchyEnemy.body.collideWorldBounds = true;
-    glitchyEnemy.body.bounce.set(1);
-    game.physics.arcade.velocityFromAngle(Math.random() * 360, speed, glitchyEnemy.body.velocity);
+    // Create new Glitchy enemy with random speed
+    const glitchyEnemy = new Glitchy(game, spawnX, spawnY, speed);
 
-    // Add the new glitchyEnemy to the enemy group
+    // Add the new Glitchy enemy to the enemy group
     enemyGroup.add(glitchyEnemy);
 }
+
 
 
 
@@ -241,8 +271,6 @@ function update() {
                 weapon.fire();
             }
 
-            // Update Glitchy movement
-            moveGlitchyEnemy();
 
             // Check for collisions between player and enemies
             game.physics.arcade.collide(playerGroup, enemyGroup, handlePlayerCollision, null, this);
