@@ -1,47 +1,3 @@
-class MainScene extends Phaser.Scene {
-    constructor() {
-        super({ key: 'MainScene' });
-        this.score = 0;
-        this.baseSpeedMin = 100;
-        this.baseSpeedMax = 300;
-        this.speedRangeIncrease = 50;
-    }
-
-    preload() {
-        this.load.image('background', 'assets/background.png');
-        this.load.image('player', 'assets/player.png');
-        this.load.image('bullet', 'assets/bullet.png');
-        this.load.image('enemy1', 'assets/enemy1.png');
-        this.load.image('enemy2', 'assets/enemy2.png');
-        this.load.image('enemy3', 'assets/enemy3.png');
-        // Load other assets as needed
-    }
-
-    create() {
-        this.add.image(400, 300, 'background');
-
-        // Player
-        this.player = this.physics.add.sprite(400, 300, 'player');
-        this.player.setOrigin(0.5, 0.5);
-        this.player.setCollideWorldBounds(true);
-
-        // Player movement
-        this.cursors = this.input.keyboard.createCursorKeys();
-
-        // Player shooting
-        this.bulletGroup = this.physics.add.group();
-
-        // Enemies
-        this.enemyGroup = this.add.group();
-
-        // Create initial enemies
-        this.createGlitchyEnemy();
-        // Add other enemy types as needed
-    }
-
-    // Rest of the game logic goes here
-}
-
 const config = {
     type: Phaser.AUTO,
     width: 800,
@@ -90,34 +46,72 @@ class Glitchy extends Enemy {
 }
 
 class MainScene extends Phaser.Scene {
-    // ...
-    update() {
-        // Player movement
-        if (this.cursors.left.isDown) {
-            this.player.setVelocityX(-200);
-        } else if (this.cursors.right.isDown) {
-            this.player.setVelocityX(200);
-        } else {
-            this.player.setVelocityX(0);
-        }
+    constructor() {
+        super({ key: 'MainScene' });
+        this.score = 0;
+        this.baseSpeedMin = 100;
+        this.baseSpeedMax = 300;
+        this.speedRangeIncrease = 50;
+    }
 
-        if (this.cursors.up.isDown) {
-            this.player.setVelocityY(-200);
-        } else if (this.cursors.down.isDown) {
-            this.player.setVelocityY(200);
-        } else {
-            this.player.setVelocityY(0);
-        }
+    preload() {
+        this.load.image('background', 'assets/background.png');
+        this.load.image('player', 'assets/player.png');
+        this.load.image('bullet', 'assets/bullet.png');
+        this.load.image('enemy1', 'assets/enemy1.png');
+        this.load.image('enemy2', 'assets/enemy2.png');
+        this.load.image('enemy3', 'assets/enemy3.png');
+        // Load other assets as needed
+    }
+
+    create() {
+        this.add.image(400, 300, 'background');
+
+        // Player
+        this.player = this.physics.add.sprite(400, 300, 'player');
+        this.player.setOrigin(0.5, 0.5);
+        this.player.setCollideWorldBounds(true);
+
+        // Player movement
+        this.cursors = this.input.keyboard.createCursorKeys();
 
         // Player shooting
-          // Player shooting
-        if (Phaser.Input.Keyboard.JustDown(this.cursors.space)) {
-            this.shootBullet();
-        }
+        this.bulletGroup = this.physics.add.group();
 
-        // Check for collisions
-        this.physics.add.collider(this.bulletGroup, this.enemyGroup, this.killGlitchyEnemy, null, this);
+        // Enemies
+        this.enemyGroup = this.add.group();
+
+        // Create initial enemies
+        this.createGlitchyEnemy();
+        // Add other enemy types as needed
+
+}    update() {
+    // Player movement
+    if (this.cursors.left.isDown) {
+        this.player.setVelocityX(-200);
+    } else if (this.cursors.right.isDown) {
+        this.player.setVelocityX(200);
+    } else {
+        this.player.setVelocityX(0);
     }
+
+    if (this.cursors.up.isDown) {
+        this.player.setVelocityY(-200);
+    } else if (this.cursors.down.isDown) {
+        this.player.setVelocityY(200);
+    } else {
+        this.player.setVelocityY(0);
+    }
+
+    // Player shooting
+    // Player shooting
+    if (Phaser.Input.Keyboard.JustDown(this.cursors.space)) {
+        this.shootBullet();
+    }
+
+    // Check for collisions
+    this.physics.add.collider(this.bulletGroup, this.enemyGroup, this.killGlitchyEnemy, null, this);
+}
 
     createGlitchyEnemy() {
         const offscreenPadding = 50;
@@ -147,5 +141,33 @@ class MainScene extends Phaser.Scene {
         bullet.setOrigin(0.5, 0.5);
         this.physics.velocityFromAngle(this.player.rotation, 400, bullet.body.velocity);
         this.bulletGroup.add(bullet);
-      }
+    }
+}
+
+class StartScene extends Phaser.Scene {
+    constructor() {
+        super({ key: 'StartScene' });
+    }
+
+    create() {
+        this.add.text(400, 300, 'Press SPACE to start', { fontSize: '32px', color: '#ffffff' }).setOrigin(0.5);
+
+        this.input.keyboard.on('keydown-SPACE', () => {
+            this.scene.start('MainScene');
+        });
+    }
+}
+
+class GameOverScene extends Phaser.Scene {
+    constructor() {
+        super({ key: 'GameOverScene' });
+    }
+
+    create() {
+        this.add.text(400, 300, 'Game Over\nPress SPACE to restart', { fontSize: '32px', color: '#ffffff', align: 'center' }).setOrigin(0.5);
+
+        this.input.keyboard.on('keydown-SPACE', () => {
+            this.scene.start('MainScene');
+        });
+    }
 }
