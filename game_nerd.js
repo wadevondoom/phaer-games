@@ -1,5 +1,3 @@
-const game = new Phaser.Game(config);
-
 class Enemy extends Phaser.Physics.Arcade.Sprite {
     constructor(scene, x, y, spriteKey) {
         super(scene, x, y, spriteKey);
@@ -12,7 +10,7 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
 
 class Glitchy extends Enemy {
     constructor(scene, x, y, speed) {
-        super(scene, x, y, 'enemy3');
+        super(scene, x, y, 'glitchy');
         scene.physics.velocityFromAngle(Phaser.Math.Between(0, 360), speed, this.body.velocity);
         this.moveTimer = 0;
     }
@@ -42,11 +40,11 @@ class MainScene extends Phaser.Scene {
 
     preload() {
         this.load.image('background', '/static/assets/background.png');
-        this.load.image('player', '/static/assets/sprites/player.png');
+        this.load.image('player', '/static/assets/sprites/ship.png');
         this.load.image('bullet', '/static/assets/sprites/bullet.png');
         this.load.image('enemy1', '/static/assets/sprites/enemy1.png');
         this.load.image('enemy2', '/static/assets/sprites/enemy2.png');
-        this.load.image('enemy3', '/static/assets/sprites/enemy3.png');
+        this.load.image('glitchy', '/static/assets/sprites/glitchy.png');
         this.load.image('bullet', '/static/assets/sprites/bullet.png');
 
         // Load other assets as needed
@@ -67,7 +65,7 @@ class MainScene extends Phaser.Scene {
         this.bulletGroup = this.physics.add.group();
 
         // Enemies
-        this.enemyGroup = this.add.group();
+        this.enemyGroup = this.physics.add.group();
 
         // Create initial enemies
         this.createGlitchyEnemy();
@@ -173,3 +171,4 @@ const config = {
     },
     scene: [StartScene, MainScene, GameOverScene],
 };
+const game = new Phaser.Game(config);
