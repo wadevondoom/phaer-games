@@ -1,270 +1,114 @@
-class Enemy extends Phaser.Physics.Arcade.Sprite {
-    constructor(scene, x, y, spriteKey) {
-        super(scene, x, y, spriteKey);
-        scene.add.existing(this);
-        scene.physics.add.existing(this);
-        this.setCollideWorldBounds(true);
-        this.setBounce(1);
-    }
-}
+// velocityFromRotation() can be called like a plain function.
+const VelocityFromRotation = Phaser.Physics.Arcade.ArcadePhysics.prototype.velocityFromRotation;
 
-class Glitchy extends Enemy {
-    constructor(scene, x, y, speed) {
-        super(scene, x, y, 'glitchy');
-        const centerX = scene.cameras.main.centerX;
-        const centerY = scene.cameras.main.centerY;
-        const angleToCenter = Phaser.Math.Angle.Between(x, y, centerX, centerY);
-        scene.physics.velocityFromAngle(Phaser.Math.RadToDeg(angleToCenter), speed, this.body.velocity);
-        this.moveTimer = 0;
-        this.body.collideWorldBounds = true;
-        this.body.bounce.set(1);
+class Racecar extends Phaser.Physics.Arcade.Image {
+    throttle = 0;
+    hitpoints = 5;
+
+    configure() {
+        this.angle = -90;
+
+        this.body.angularDrag = 120;
+        this.body.maxSpeed = 800;
+
+        this.body.setSize(64, 64, true);
     }
 
-    preUpdate(time, delta) {
-        super.preUpdate(time, delta);
+    update(delta, cursorKeys) {
+        const { left, right, up, down } = cursorKeys;
 
-        if (this.moveTimer <= 0) {
-            const speed = 150;
-            let angle = Phaser.Math.Between(0, 360);
-            if (this.body.blocked.left || this.body.blocked.right) {
-                // If Glitchy is blocked horizontally, change its vertical direction
-                angle = 180 - angle;
-            } else if (this.body.blocked.up || this.body.blocked.down) {
-                // If Glitchy is blocked vertically, change its horizontal direction
-                angle = 360 - angle;
-            }
-            this.scene.physics.velocityFromAngle(angle, speed, this.body.velocity);
-            this.moveTimer = time + 100; // Change direction every 0.1 seconds for a stutter effect
-        } else {
-            this.moveTimer -= delta;
+        if (up.isDown) {
+            this.throttle += 0.6 * delta;
         }
-    }
-}
-
-
-
-class Braino extends Enemy {
-    constructor(scene, x, y, speed) {
-        super(scene, x, y, 'braino');
-        scene.physics.velocityFromAngle(Phaser.Math.Between(0, 360), speed, this.body.velocity);
-        this.moveTimer = 0;
-        this.wrapPadding = 50; // The padding to use for wrapping
-    }
-
-    preUpdate(time, delta) {
-        super.preUpdate(time, delta);
-
-        // Move in a sine wave pattern
-        this.y += Math.sin(time / 500) * 2;
-        this.x += this.body.velocity.x * (delta / 1000);
-
-        // Wrap around the screen
-        this.scene.physics.world.wrap(this.body, this.wrapPadding);
-    }
-}
-
-
-
-class Malware extends Enemy {
-    constructor(scene, x, y, speed) {
-        super(scene, x, y, 'malware');
-        scene.physics.velocityFromAngle(Phaser.Math.Between(0, 360), speed, this.body.velocity);
-        this.moveTimer = 0;
-    }
-
-    preUpdate(time, delta) {
-        super.preUpdate(time, delta);
-
-        if (this.moveTimer <= 0) {
-            const speed = 150;
-            const angle = Phaser.Math.Between(0, 360);
-            this.scene.physics.velocityFromAngle(angle, speed, this.body.velocity);
-            this.moveTimer = time + 1500; // Change direction every 1.5 seconds
-        } else {
-            this.moveTimer -= delta;
+        else if (down.isDown) {
+            this.throttle -= 1.5 * delta;
         }
+
+        this.throttle = Phaser.Math.Clamp(this.throttle, -64, 1024);
+
+        if (left.isDown) {
+            this.body.setAngularAcceleration(-360);
+        }
+        else if (right.isDown) {
+            this.body.setAngularAcceleration(360);
+        }
+        else {
+            this.body.setAngularAcceleration(0);
+        }
+
+        VelocityFromRotation(this.rotation, this.throttle, this.body.velocity);
+
+        this.body.maxAngular = Phaser.Math.Clamp(90 * this.body.speed / 1024, 0, 90);
     }
 }
 
-class Roguebot extends Enemy {
-    constructor(scene, x, y, speed) {
-        super(scene, x, y, 'roguebot');
-        scene.physics.velocityFromAngle(Phaser.Math.Between(0, 360), speed, this.body.velocity);
-        this.moveTimer = 0;
+class Bombo extends Phaser.Physics.Arcade.Image {
+    throttle = 0;
+    hitpoints = 5;
+
+    configure() {
+
+        // logic here
+        
     }
 
-    preUpdate(time, delta) {
-        super.preUpdate(time, delta);
+    update(delta, cursorKeys) {
 
-        if (this.moveTimer <= 0) {
-            const speed = 150;
-            const angle = Phaser.Math.Between(0, 360);
-            this.scene.physics.velocityFromAngle(angle, speed, this.body.velocity);
-            this.moveTimer = time + 1500; // Change direction every 1.5 seconds
-        } else {
-            this.moveTimer -= delta;
-        }
+        // logic here
+        
     }
 }
 
 class MainScene extends Phaser.Scene {
     constructor() {
         super({ key: 'MainScene' });
-        this.score = 0;
-        this.baseSpeedMin = 100;
-        this.baseSpeedMax = 300;
-        this.speedRangeIncrease = 50;
-        this.playerHealth = 3;
     }
-
     preload() {
-        this.load.image('background', '/static/assets/background.png');
-        this.load.image('player', '/static/assets/sprites/ship.png');
-        this.load.image('bullet', '/static/assets/sprites/bullet.png');
-        this.load.image('malware', '/static/assets/sprites/malware.png');
-        this.load.image('roguebot', '/static/assets/sprites/roguebot.png');
-        this.load.image('glitchy', '/static/assets/sprites/glitchy.png');
-        this.load.image('durrdurr', '/static/assets/sprites/durrdurr.png');
+        this.load.image('ground', '/static/assets/carwars/sprites/ground.jpg');
+        this.load.image('car', '/static/assets/carwars/sprites/two-way.png');
+        this.load.image('bombo', '/static/assets/carwars/sprites/bomb-o.png');
 
-        // Load other assets as needed
     }
 
     create() {
-        this.add.image(400, 300, 'background');
+        this.ground = this.add.tileSprite(512, 512, 1024, 1024, 'ground').setScrollFactor(0, 0);
 
-        // Player
-        this.player = this.physics.add.sprite(400, 300, 'player');
-        this.player.setOrigin(0.5, 0.5);
-        this.player.setCollideWorldBounds(false);
+        this.car = new Racecar(this, 256, 512, 'car');
+        this.add.existing(this.car);
+        this.physics.add.existing(this.car);
+        this.car.configure();
 
-        // Set firerate
-        this.lastFired = 0;
-        this.fireRate = 300; // in milliseconds
+        this.cursorKeys = this.input.keyboard.createCursorKeys();
 
-        // Player movement
-        this.cursors = this.input.keyboard.createCursorKeys();
-
-        // Player shooting
-        this.bulletGroup = this.physics.add.group();
-
-        // Enemies
-        this.enemyGroup = this.physics.add.group();
-
-        // Create initial enemies
-        this.createGlitchyEnemy();
-        this.createGlitchyEnemy();
-        this.createGlitchyEnemy();
-        // Add other enemy types as needed
-
-
-
+        this.cameras.main.startFollow(this.car);
     }
 
-    update() {
-        // Player movement
-        if (this.cursors.left.isDown) {
-            this.player.setAngularVelocity(-150);
-        } else if (this.cursors.right.isDown) {
-            this.player.setAngularVelocity(150);
-        } else {
-            this.player.setAngularVelocity(0);
-        }
+    update(time, delta) {
+        const { scrollX, scrollY } = this.cameras.main;
 
-        if (this.cursors.up.isDown) {
-            this.physics.velocityFromRotation(this.player.rotation, 300, this.player.body.acceleration);
-        } else {
-            this.player.body.acceleration.multiply(DAMPING_FACTOR);
-        }
+        this.ground.setTilePosition(scrollX, scrollY);
 
-        // Check if the spacebar is pressed and if enough time has elapsed since the last shot
-        if (this.cursors.space.isDown && (time - this.lastFired > this.fireRate)) {
-            this.lastFired = time; // Record the time of the last shot
-            this.shootBullet();
-        }
-
-        const screenW = this.cameras.main.width;
-        const screenH = this.cameras.main.height;
-
-        if (this.player.x < 0) {
-            this.player.x = screenW;
-        } else if (this.player.x > screenW) {
-            this.player.x = 0;
-        }
-
-        if (this.player.y < 0) {
-            this.player.y = screenH;
-        } else if (this.player.y > screenH) {
-            this.player.y = 0;
-        }
-
-        // Check for collisions
-        this.physics.add.collider(this.bulletGroup, this.enemyGroup, this.killGlitchyEnemy, null, this);
-        this.physics.add.collider(this.player, this.enemyGroup, this.playerHit, null, this);
-
+        this.car.update(delta, this.cursorKeys);
     }
-
-
-    createGlitchyEnemy() {
-        const offscreenPadding = 50;
-        const spawnX = Phaser.Math.Between(0, 1) < 0.5 ? -offscreenPadding : this.cameras.main.width + offscreenPadding;
-        const spawnY = Phaser.Math.Between(offscreenPadding, this.cameras.main.height - offscreenPadding);
-
-        // Calculate speed range based on player score
-        const speedMin = this.baseSpeedMin + Math.floor(this.score / 1000) * this.speedRangeIncrease;
-        const speedMax = this.baseSpeedMax + Math.floor(this.score / 1000) * this.speedRangeIncrease;
-        const speed = Phaser.Math.Between(speedMin, speedMax);
-
-        // Create new Glitchy enemy with random speed
-        const glitchyEnemy = new Glitchy(this, spawnX, spawnY, speed);
-        this.enemyGroup.add(glitchyEnemy);
-    }
-
-    killGlitchyEnemy(bullet, enemy) {
-        bullet.disableBody(true, true); // Disable bullet body immediately
-        enemy.destroy(); // Destroy enemy immediately
-        this.time.delayedCall(10, () => {
-            bullet.destroy(); // Destroy bullet after 10ms
-        }, [], this);
-        // Add score, sound effects, etc.
-        score += 100;
-        this.createGlitchyEnemy();
-    }
-
-
-    shootBullet() {
-        const bullet = this.physics.add.sprite(this.player.x, this.player.y, 'bullet');
-        bullet.setOrigin(0.5, 0.5);
-        bullet.setAngle(this.player.angle);
-        bullet.body.setAllowGravity(false);
-        bullet.checkWorldBounds = true;
-        bullet.outOfBoundsKill = true;
-        this.bulletGroup.add(bullet);
-        this.physics.velocityFromRotation(this.player.rotation, 800, bullet.body.velocity);
-    }
-
-
-
-    playerHit(player, enemy) {
-        this.playerHealth = this.playerHealth - 1
-
-        if (this.playerHealth == 0) {
-            this.scene.start('GameOverScene');
-        }
-    }
-
 }
 
 class StartScene extends Phaser.Scene {
     constructor() {
         super({ key: 'StartScene' });
     }
+    preload() {
+        this.load.image('startScreen', '/static/assets/carwars/sprites/startScreen.jpg');
+    }
 
     create() {
-        this.add.text(400, 300, 'Press SPACE to start', { fontSize: '32px', color: '#ffffff' }).setOrigin(0.5);
+        this.add.image(400, 300, 'startScreen');
+        this.spacebar = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    }
 
-        this.input.keyboard.on('keydown-SPACE', () => {
+    update() {
+        if (this.spacebar.isDown) {
             this.scene.start('MainScene');
-        });
+        }
     }
 }
 
@@ -272,15 +116,22 @@ class GameOverScene extends Phaser.Scene {
     constructor() {
         super({ key: 'GameOverScene' });
     }
+    preload() {
+        this.load.image('overScreen', '/static/assets/carwars/sprites/overScreen.jpg');
+    }
 
     create() {
-        this.add.text(400, 300, 'Game Over\nPress SPACE to restart', { fontSize: '32px', color: '#ffffff', align: 'center' }).setOrigin(0.5);
+        this.add.image(400, 300, 'overScreen');
+        this.spacebar = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    }
 
-        this.input.keyboard.on('keydown-SPACE', () => {
+    update() {
+        if (this.spacebar.isDown) {
             this.scene.start('MainScene');
-        });
+        }
     }
 }
+
 
 const config = {
     type: Phaser.AUTO,
@@ -290,10 +141,16 @@ const config = {
         default: 'arcade',
         arcade: {
             gravity: { y: 0 },
-            debug: false,
+            debug: true,
         },
+    },
+    scale: {
+        mode: Phaser.Scale.FIT,
+        autoCenter: Phaser.Scale.CENTER_BOTH,
+        parent: 'gameCanvas',
+        fullscreenTarget: 'gameCanvas',
     },
     scene: [StartScene, MainScene, GameOverScene],
 };
-const DAMPING_FACTOR = 0.55;
+
 const game = new Phaser.Game(config);
