@@ -44,6 +44,8 @@ class Racecar extends Phaser.Physics.Arcade.Image {
 
 // Add this after the Racecar class
 class Bombo extends Phaser.Physics.Arcade.Image {
+    hitpoints = 2; // Add hitpoints property
+
     constructor(scene, x, y, texture) {
         super(scene, x, y, texture);
         scene.add.existing(this);
@@ -54,14 +56,41 @@ class Bombo extends Phaser.Physics.Arcade.Image {
 
     configure() {
         this.angle = -90;
+
         this.body.angularDrag = 120;
-        this.body.maxSpeed = 200; // A bit slower than the player
+        this.body.maxSpeed = 600;
+
         this.body.setSize(64, 64, true);
-        this.chasing = false;
-        this.body.maxSpeed = 300;
-        this.body.velocity.setTo(0, 0); // Set initial velocity to zero
-        this.acceleration = 25; // Set acceleration for Bombo
+
+        // Set a random off-screen spawn position
+        const spawnSide = Phaser.Math.Between(0, 3);
+        let x, y;
+
+        switch (spawnSide) {
+            case 0: // Top
+                x = Phaser.Math.Between(0, this.scene.cameras.main.width);
+                y = -64;
+                break;
+            case 1: // Right
+                x = this.scene.cameras.main.width + 64;
+                y = Phaser.Math.Between(0, this.scene.cameras.main.height);
+                break;
+            case 2: // Bottom
+                x = Phaser.Math.Between(0, this.scene.cameras.main.width);
+                y = this.scene.cameras.main.height + 64;
+                break;
+            case 3: // Left
+            default:
+                x = -64;
+                y = Phaser.Math.Between(0, this.scene.cameras.main.height);
+                break;
+        }
+
+        this.setPosition(x, y);
+        this.spawnX = x;
+        this.spawnY = y;
     }
+
 
     update(delta, target) {
         if (!this.chasing) {
@@ -74,12 +103,12 @@ class Bombo extends Phaser.Physics.Arcade.Image {
         } else {
             const direction = Phaser.Math.Angle.Between(this.x, this.y, target.x, target.y);
             this.rotation = direction; // Rotate Bombo towards the direction it's traveling
-      
+
             // Accelerate Bombo towards the target
             this.scene.physics.velocityFromRotation(
-              direction,
-              Math.min(this.body.speed + this.acceleration * delta, this.body.maxSpeed),
-              this.body.velocity
+                direction,
+                Math.min(this.body.speed + this.acceleration * delta, this.body.maxSpeed),
+                this.body.velocity
             );
         }
     }
@@ -94,6 +123,11 @@ class MainScene extends Phaser.Scene {
         this.load.image('car', '/static/assets/carwars/sprites/two-way.png');
         this.load.image('bombo', '/static/assets/carwars/sprites/bomb-o.png');
 
+        // Load fire sprites
+        this.load.image('fire1', '/static/assets/carwars/sprites/fire1.png');
+        this.load.image('fire2', '/static/assets/carwars/sprites/fire2.png');
+        this.load.image('fire3', '/static/assets/carwars/sprites/fire3.png');
+
     }
 
     create() {
@@ -104,43 +138,91 @@ class MainScene extends Phaser.Scene {
         this.physics.add.existing(this.car);
         this.car.configure();
 
+        this.bombo = new Bombo(this, 768, 512, 'bombo');
+        this.add.existing(this.bombo);
+        this.physics.add.existing(this.bombo);
+        this.bombo.configure();
+
         this.cursorKeys = this.input.keyboard.createCursorKeys();
 
         this.cameras.main.startFollow(this.car);
 
-        // Add Bombo to the scene
-        this.bombo = new Bombo(this, -100, 300, 'bombo');
-        this.load.image('bombo', '/static/assets/carwars/sprites/bombo.png');
+        // Create a particle emitter manager
+        this.particles = this.add.particles();
 
-        // Add a collider between the player and Bombo
+        // Create a particle emitter
+        this.explosionEmitter = this.particles.createEmitter({
+            x: 0,
+            y: 0,
+            speed: { min: 100, max: 300 },
+            angle: { min: 0, max: 360 },
+            scale: { start: 0.5, end: 0 },
+            alpha: { start: 1, end: 0 },
+            lifespan: 1000,
+            on: false,
+        });
+
+        // Create text objects for player's HP and enemy count
+        this.hpText = this.add.text(10, 10, `HP: ${this.car.hitpoints}`, {
+            fontSize: '16px',
+            color: '#ffffff',
+        }).setScrollFactor(0);
+
+        this.enemyCountText = this.add.text(
+            this.cameras.main.width - 100, 10, `Enemies: 1`, {
+            fontSize: '16px',
+            color: '#ffffff',
+        }).setScrollFactor(0);
+
         this.physics.add.collider(
             this.car,
             this.bombo,
             (player, bombo) => {
+                if (player.invulnerable) return;
+
                 player.hitpoints -= 1;
+                this.hpText.setText(`HP: ${player.hitpoints}`);
+
+                player.invulnerable = true;
                 this.time.delayedCall(1000, () => {
                     player.invulnerable = false;
-                  });
-                if (player.hitpoints <= 0) {
-                    this.scene.start('GameOverScene');
-                }
-                const angle = Phaser.Math.Angle.Between(player.x, player.y, bombo.x, bombo.y);
-                const distance = Phaser.Math.Distance.Between(player.x, player.y, bombo.x, bombo.y);
-                const force = 1000;
+                });
 
-                player.body.setVelocity(
-                    player.body.velocity.x - Math.cos(angle) * force / distance,
-                    player.body.velocity.y - Math.sin(angle) * force / distance
-                );
-                // Set Bombo's velocity to zero and make it speed up again
-                bombo.body.velocity.setTo(0, 0);
-                bombo.chasing = false;
+                bombo.hitpoints--;
+
+                if (bombo.hitpoints === 0) {
+                    const fireIndex = Phaser.Math.Between(1, 3);
+                    const explosion = this.add.image(bombo.x, bombo.y, `fire${fireIndex}`);
+                    this.tweens.add({
+                        targets: explosion,
+                        alpha: 0,
+                        duration: 1000,
+                        onComplete: () => {
+                            explosion.destroy();
+                        },
+                    });
+
+                    // Trigger the particle effect
+                    this.explosionEmitter.setPosition(bombo.x, bombo.y);
+                    this.explosionEmitter.explode(30);
+
+                    bombo.destroy();
+
+                    // Update enemy count text
+                    this.enemyCountText.setText('Enemies: 0');
+                } else {
+                    bombo.body.velocity.setTo(0, 0);
+                    bombo.chasing = false;
+                    bombo.x = bombo.spawnX;
+                    bombo.y = bombo.spawnY;
+                }
             },
-            null,
+            () => !this.car.invulnerable,
             this
         );
-
     }
+
+
 
     update(time, delta) {
         const { scrollX, scrollY } = this.cameras.main;
