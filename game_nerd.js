@@ -3,8 +3,8 @@ const VelocityFromRotation = Phaser.Physics.Arcade.ArcadePhysics.prototype.veloc
 
 class Racecar extends Phaser.Physics.Arcade.Image {
     throttle = 0;
-    hitpoints = 5;
-
+    hitpoints = 8;
+    invulnerable = false; // Add invulnerability flag
     configure() {
         this.angle = -90;
 
@@ -42,20 +42,46 @@ class Racecar extends Phaser.Physics.Arcade.Image {
     }
 }
 
+// Add this after the Racecar class
 class Bombo extends Phaser.Physics.Arcade.Image {
-    throttle = 0;
-    hitpoints = 5;
+    constructor(scene, x, y, texture) {
+        super(scene, x, y, texture);
+        scene.add.existing(this);
+        scene.physics.add.existing(this);
 
-    configure() {
-
-        // logic here
-        
+        this.configure();
     }
 
-    update(delta, cursorKeys) {
+    configure() {
+        this.angle = -90;
+        this.body.angularDrag = 120;
+        this.body.maxSpeed = 200; // A bit slower than the player
+        this.body.setSize(64, 64, true);
+        this.chasing = false;
+        this.body.maxSpeed = 300;
+        this.body.velocity.setTo(0, 0); // Set initial velocity to zero
+        this.acceleration = 25; // Set acceleration for Bombo
+    }
 
-        // logic here
-        
+    update(delta, target) {
+        if (!this.chasing) {
+            this.chasing = true;
+            this.scene.time.delayedCall(1000, () => {
+                this.chasing = false;
+                this.x = -100;
+                this.y = Phaser.Math.Between(100, 500);
+            });
+        } else {
+            const direction = Phaser.Math.Angle.Between(this.x, this.y, target.x, target.y);
+            this.rotation = direction; // Rotate Bombo towards the direction it's traveling
+      
+            // Accelerate Bombo towards the target
+            this.scene.physics.velocityFromRotation(
+              direction,
+              Math.min(this.body.speed + this.acceleration * delta, this.body.maxSpeed),
+              this.body.velocity
+            );
+        }
     }
 }
 
@@ -81,14 +107,47 @@ class MainScene extends Phaser.Scene {
         this.cursorKeys = this.input.keyboard.createCursorKeys();
 
         this.cameras.main.startFollow(this.car);
+
+        // Add Bombo to the scene
+        this.bombo = new Bombo(this, -100, 300, 'bombo');
+        this.load.image('bombo', '/static/assets/carwars/sprites/bombo.png');
+
+        // Add a collider between the player and Bombo
+        this.physics.add.collider(
+            this.car,
+            this.bombo,
+            (player, bombo) => {
+                player.hitpoints -= 1;
+                this.time.delayedCall(1000, () => {
+                    player.invulnerable = false;
+                  });
+                if (player.hitpoints <= 0) {
+                    this.scene.start('GameOverScene');
+                }
+                const angle = Phaser.Math.Angle.Between(player.x, player.y, bombo.x, bombo.y);
+                const distance = Phaser.Math.Distance.Between(player.x, player.y, bombo.x, bombo.y);
+                const force = 1000;
+
+                player.body.setVelocity(
+                    player.body.velocity.x - Math.cos(angle) * force / distance,
+                    player.body.velocity.y - Math.sin(angle) * force / distance
+                );
+                // Set Bombo's velocity to zero and make it speed up again
+                bombo.body.velocity.setTo(0, 0);
+                bombo.chasing = false;
+            },
+            null,
+            this
+        );
+
     }
 
     update(time, delta) {
         const { scrollX, scrollY } = this.cameras.main;
 
         this.ground.setTilePosition(scrollX, scrollY);
-
         this.car.update(delta, this.cursorKeys);
+        this.bombo.update(delta, this.car);
     }
 }
 
